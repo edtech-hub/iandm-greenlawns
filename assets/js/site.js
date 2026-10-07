@@ -80,20 +80,26 @@
 
     function openFrom(img, trigger) {
       lastTrigger = trigger;
-      var rect = img.getBoundingClientRect();
-      var natW = img.naturalWidth || rect.width, natH = img.naturalHeight || rect.height;
+      // Same approach as WordPress core: zoom from the thumbnail's crop, never stretch it.
+      var r = img.getBoundingClientRect();
+      var natW = img.naturalWidth || r.width, natH = img.naturalHeight || r.height;
       var ratio = natW / natH;
-      var maxW = Math.min(window.innerWidth - 80, natW > 400 ? 1400 : natW), maxH = window.innerHeight - 120;
-      var w = maxW, h = w / ratio;
+      var maxW = Math.min(window.innerWidth - 80, 1400), maxH = window.innerHeight - 120;
+      var w = Math.min(maxW, natW), h = w / ratio;
       if (h > maxH) { h = maxH; w = h * ratio; }
+      var scale = Math.max(r.width / w, r.height / h);
+      var left = r.left - (w * scale - r.width) / 2;
+      var top = r.top - (h * scale - r.height) / 2;
+      var dx = Math.max(0, (w - r.width / scale) / 2), dy = Math.max(0, (h - r.height / scale) / 2);
       var s = overlay.style;
       s.setProperty("--wp--lightbox-container-width", w + "px");
       s.setProperty("--wp--lightbox-container-height", h + "px");
       s.setProperty("--wp--lightbox-image-width", w + "px");
       s.setProperty("--wp--lightbox-image-height", h + "px");
-      s.setProperty("--wp--lightbox-scale", String(rect.width / w));
-      s.setProperty("--wp--lightbox-initial-left-position", rect.left + "px");
-      s.setProperty("--wp--lightbox-initial-top-position", rect.top + "px");
+      s.setProperty("--wp--lightbox-scale", String(scale));
+      s.setProperty("--wp--lightbox-initial-left-position", left + "px");
+      s.setProperty("--wp--lightbox-initial-top-position", top + "px");
+      s.setProperty("--wp--lightbox-initial-clip", "inset(" + dy + "px " + dx + "px " + dy + "px " + dx + "px)");
       s.setProperty("--wp--lightbox-scrollbar-width", (window.innerWidth - document.documentElement.clientWidth) + "px");
       big.src = img.currentSrc || img.src;
       big.alt = img.alt;
