@@ -419,3 +419,105 @@ p { margin: 0; text-wrap: pretty; }
 .notfound p { max-width: 44ch; margin: 14px auto 0; color: var(--wp--preset--color--accent-4); }
 .notfound .wp-block-buttons { justify-content: center; margin-top: 26px; }
 @media (max-width: 781px) { body.has-mobile-actions { padding-bottom: calc(70px + env(safe-area-inset-bottom)); } }
+
+/* Rounded service cards (hero quote box and quote page) */
+.gchoice-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin: 0; padding: 0; list-style: none; }
+.gcard { position: relative; display: block; height: 100%; }
+.gcard input { position: absolute; width: 1px; height: 1px; opacity: 0; }
+.gcard__box {
+  display: flex; align-items: center; gap: 10px; height: 100%; min-height: 46px; padding: 7px 10px 7px 7px;
+  border: 1.5px solid #d3d9cf; border-radius: 12px; background: #fff;
+  font-size: .9rem; font-weight: 600; line-height: 1.2; cursor: pointer;
+  transition: border-color .15s ease, background-color .15s ease, box-shadow .15s ease, transform .15s ease;
+}
+.gcard__box:hover { border-color: var(--wp--preset--color--accent-2); }
+.gcard__box:active { transform: scale(.98); }
+.gcard__icon { display: grid; flex: none; place-items: center; width: 30px; height: 30px; border-radius: 9px; background: var(--wp--preset--color--accent-5); color: var(--wp--preset--color--accent-2); transition: background-color .15s ease, color .15s ease; }
+.gcard__icon svg { width: 17px; height: 17px; }
+.gcard__text { min-width: 0; }
+.gcard__desc { display: block; margin-top: 3px; color: var(--wp--preset--color--accent-4); font-size: .82rem; font-weight: 400; line-height: 1.35; }
+.gcard__tick { display: grid; flex: none; place-items: center; width: 18px; height: 18px; margin-left: auto; border: 1.5px solid #c3cabe; border-radius: 50%; color: transparent; transition: background-color .15s ease, border-color .15s ease; }
+.gcard__tick svg { width: 10px; height: 10px; }
+.gcard input:checked + .gcard__box { border-color: var(--wp--preset--color--accent-2); background: #f1f8ec; box-shadow: inset 0 0 0 1px var(--wp--preset--color--accent-2); }
+.gcard input:checked + .gcard__box .gcard__icon { background: var(--wp--preset--color--accent-1); color: var(--wp--preset--color--accent-3); }
+.gcard input:checked + .gcard__box .gcard__tick { border-color: var(--wp--preset--color--accent-2); background: var(--wp--preset--color--accent-2); color: #fff; animation: tick-pop .25s ease; }
+.gcard input:focus-visible + .gcard__box { outline: 2px solid var(--wp--preset--color--accent-2); outline-offset: 2px; }
+.gfield.has-error .gcard__box { border-color: #e2a99e; }
+@keyframes tick-pop { from { transform: scale(.5); } to { transform: scale(1); } }
+.gchoice-cards--lg { gap: 10px; }
+.gchoice-cards--lg .gcard__box { align-items: flex-start; padding: 14px 14px 14px 12px; font-size: 1rem; }
+.gchoice-cards--lg .gcard__icon { width: 40px; height: 40px; border-radius: 11px; }
+.gchoice-cards--lg .gcard__icon svg { width: 20px; height: 20px; }
+@media (max-width: 479px) {
+  .gchoice-cards--lg .gcard__box { flex-direction: column; gap: 8px; padding: 12px; }
+  .gchoice-cards--lg .gcard__tick { position: absolute; top: 12px; right: 12px; }
+}
+.gform_footer--inline { display: grid; grid-template-columns: 1fr 1.35fr; gap: 12px; align-items: end; }
+.gform_footer--inline .wp-element-button { width: 100%; min-height: 46px; padding: .8rem 1rem; }
+.hero-cover { padding-top: var(--wp--preset--spacing--50) !important; padding-bottom: var(--wp--preset--spacing--50) !important; }
+
+/* Trust row graphics */
+.trust-item { display: flex; align-items: center; gap: 14px; }
+.trust-item p { margin: 0; }
+.trust-art { flex: none; width: 56px; height: 56px; transition: transform .3s cubic-bezier(.2, .7, .2, 1); }
+.trust-item:hover .trust-art { transform: translateY(-3px) rotate(-3deg); }
+.trust-art__spark { transform-box: fill-box; transform-origin: center; }
+.trust-art__pin { transform-box: fill-box; transform-origin: 50% 100%; }
+.js .trust-item.wp-reveal .trust-art { transform: scale(.6); opacity: 0; transition: transform .5s cubic-bezier(.34, 1.56, .64, 1), opacity .4s ease; transition-delay: calc(var(--reveal-delay, 0s) + .1s); }
+.js .trust-item.wp-reveal.is-revealed .trust-art { transform: none; opacity: 1; }
+.trust-item.is-revealed .trust-art__spark { animation: spark 2.4s ease-in-out .6s 2; }
+.trust-item.is-revealed .trust-art__pin { animation: pin-drop .6s cubic-bezier(.34, 1.56, .64, 1) .3s both; }
+@keyframes spark { 0%, 100% { transform: scale(1) rotate(0); } 50% { transform: scale(1.35) rotate(25deg); } }
+@keyframes pin-drop { from { transform: translateY(-8px); opacity: 0; } to { transform: none; opacity: 1; } }
+@media (max-width: 781px) { .trust-item { gap: 10px; } .trust-art { width: 44px; height: 44px; } }
+@media (prefers-reduced-motion: reduce) { .trust-item .trust-art, .trust-art__spark, .trust-art__pin { animation: none !important; transform: none !important; opacity: 1 !important; } }
+
+/* Home: contact + opening hours */
+.home-hours { align-items: center !important; }
+@media (min-width: 782px) { .home-hours > .wp-block-column:first-child { flex: 1.15 1 0 !important; } .home-hours > .wp-block-column:last-child { flex: 0 0 380px !important; } }
+.home-hours__lede { margin: 14px 0 26px; color: var(--wp--preset--color--accent-4); font-size: var(--wp--preset--font-size--large); }
+.home-hours__details { display: grid; gap: 10px; margin: 28px 0 0; padding: 22px 0 0; border-top: 1px solid var(--wp--preset--color--accent-6); list-style: none; font-size: var(--wp--preset--font-size--small); }
+.home-hours__details span { display: block; color: var(--wp--preset--color--accent-4); font-size: .78rem; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; }
+.home-hours__details a { color: var(--wp--preset--color--contrast); font-weight: 600; word-break: break-word; }
+.hours-card { padding: 26px; border: 1px solid var(--wp--preset--color--accent-6); border-radius: 12px; background: #fff; box-shadow: 0 12px 32px rgb(19 37 26 / .06); }
+.hours-card h3 { margin-bottom: 10px; font-size: var(--wp--preset--font-size--large); }
+.hours-card .hours-table { font-size: .95rem; }
+.hours-card .hours-table td { padding: 9px 0; }
+.hours-card__note { margin-top: 14px; color: var(--wp--preset--color--accent-4); font-size: var(--wp--preset--font-size--small); }
+.gform_footer--inline .gfield { grid-column: auto; }
+.gchoice-cards { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.gcard__text { overflow-wrap: anywhere; }
+.quote-box .gcard__box { min-height: 42px; padding-top: 6px; padding-bottom: 6px; }
+@media (max-width: 479px) {
+  .quote-box .gcard__tick { display: none; }
+  .quote-box .gcard__box { gap: 8px; padding-right: 8px; font-size: .86rem; }
+  .quote-box .gcard__icon { width: 26px; height: 26px; }
+}
+
+/* Services mega menu (navigation submenu, Mega Menu block style) */
+.wp-block-navigation__container { align-items: center; }
+.wp-block-navigation-item.has-child { display: flex; align-items: center; gap: 2px; }
+.wp-block-navigation__submenu-icon { display: inline-grid; place-items: center; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 4px; background: none; color: inherit; cursor: pointer; }
+.wp-block-navigation__submenu-icon svg { width: 12px; height: 12px; stroke: currentColor; transition: transform .2s ease; }
+.has-mega-menu.is-open > .wp-block-navigation-item__content { text-decoration: underline; text-underline-offset: .35em; }
+.has-mega-menu.is-open .wp-block-navigation__submenu-icon svg { transform: rotate(180deg); }
+.mega-menu {
+  position: absolute; top: 100%; right: 0; left: 0; z-index: 40;
+  padding: 26px var(--wp--style--root--padding-right) 24px var(--wp--style--root--padding-left);
+  border-top: 1px solid var(--wp--preset--color--accent-6); background: #fff; box-shadow: 0 28px 48px rgb(19 37 26 / .12);
+  opacity: 0; visibility: hidden; transform: translateY(-6px);
+  transition: opacity .18s ease, transform .18s ease, visibility 0s linear .18s;
+}
+.has-mega-menu.is-open .mega-menu { opacity: 1; visibility: visible; transform: none; transition: opacity .18s ease, transform .18s ease; }
+.mega-menu__inner { max-width: var(--wp--style--global--wide-size); margin: 0 auto; }
+.mega-menu__grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; }
+.mega-card { display: block; margin: -10px; padding: 10px; border-radius: 10px; color: var(--wp--preset--color--contrast); text-decoration: none; transition: background-color .15s ease; }
+.mega-card:hover, .mega-card:focus-visible { background: var(--wp--preset--color--accent-5); }
+.mega-card img { display: block; width: 100%; margin-bottom: 12px; aspect-ratio: 16 / 10; object-fit: cover; border-radius: 6px; }
+.mega-card__title { display: block; font-size: 1rem; font-weight: 600; }
+.mega-card__text { display: block; margin-top: 4px; color: var(--wp--preset--color--accent-4); font-size: .875rem; line-height: 1.45; }
+.mega-menu__foot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 24px; margin-top: 22px; padding-top: 16px; border-top: 1px solid var(--wp--preset--color--accent-6); color: var(--wp--preset--color--accent-4); font-size: .875rem; }
+.mega-menu__foot strong { color: var(--wp--preset--color--contrast); }
+@media (max-width: 999px) { .mega-menu { display: none; } }
+.wp-block-navigation__responsive-container .overlay-sub { margin: 0 0 6px; padding: 0 0 0 2px; }
+.wp-block-navigation__responsive-container .overlay-sub a { padding: 5px 0; color: var(--wp--preset--color--accent-4); font-size: var(--wp--preset--font-size--medium); }

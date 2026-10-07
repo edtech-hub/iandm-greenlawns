@@ -255,6 +255,25 @@
     });
   }
 
+  /* Services mega menu: opens on hover (desktop) or with the arrow button. */
+  function megaMenu() {
+    var hoverable = window.matchMedia("(hover: hover) and (min-width: 1000px)");
+    document.querySelectorAll(".has-mega-menu").forEach(function (item) {
+      var btn = item.querySelector(".wp-block-navigation-submenu__toggle");
+      var timer;
+      function open() { clearTimeout(timer); item.classList.add("is-open"); btn.setAttribute("aria-expanded", "true"); }
+      function close() { clearTimeout(timer); item.classList.remove("is-open"); btn.setAttribute("aria-expanded", "false"); }
+      item.addEventListener("mouseenter", function () { if (hoverable.matches) open(); });
+      item.addEventListener("mouseleave", function () { if (hoverable.matches) timer = setTimeout(close, 180); });
+      btn.addEventListener("click", function () { item.classList.contains("is-open") ? close() : open(); });
+      item.addEventListener("focusout", function (e) { if (!item.contains(e.relatedTarget)) close(); });
+      document.addEventListener("click", function (e) { if (!item.contains(e.target)) close(); });
+      document.addEventListener("keydown", function (e) {
+        if (e.key === "Escape" && item.classList.contains("is-open")) { close(); btn.focus(); }
+      });
+    });
+  }
+
   /* Mobile action bar appears once the main call-to-action has scrolled out of view. */
   function mobileActions() {
     var bar = document.querySelector(".mobile-actions");
@@ -276,6 +295,7 @@
     setInterval(applyHours, 60000);
     stickyHeader();
     overlayMenu();
+    megaMenu();
     mobileActions();
     lightbox();
     reveal();
