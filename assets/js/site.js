@@ -1,256 +1,286 @@
-/* I&M Services: small, dependency-free site script. */
+/* I&M Services site script. No dependencies. */
 (function () {
   "use strict";
 
   var DAYS = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
-  var OPEN_HOUR = 8;   // 8:00 am
-  var CLOSE_HOUR = 17; // 5:00 pm
-  var SERVICE_LABELS = {
-    "fertilization": "Fertilization",
-    "weed-control": "Weed control",
-    "pest-control": "Pest control",
-    "perimeter-pest-control": "Perimeter pest control",
-    "something-else": "Something else",
-    "not-sure": "Not sure yet"
-  };
+  var reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
 
-  /* Business hours, read in Florida time so visitors anywhere see the right status. */
+  /* Open / closed, always in Florida time. */
   function floridaNow() {
     var parts = new Intl.DateTimeFormat("en-US", {
       timeZone: "America/New_York", weekday: "long", hour: "numeric", minute: "numeric", hour12: false
     }).formatToParts(new Date());
-    var get = function (type) { return (parts.find(function (p) { return p.type === type; }) || {}).value; };
-    return { day: DAYS.indexOf(get("weekday")), hour: parseInt(get("hour"), 10) % 24, minute: parseInt(get("minute"), 10) };
+    var get = function (t) { return (parts.find(function (p) { return p.type === t; }) || {}).value; };
+    return { day: DAYS.indexOf(get("weekday")), mins: (parseInt(get("hour"), 10) % 24) * 60 + parseInt(get("minute"), 10) };
   }
-
-  function hoursStatus() {
+  function applyHours() {
     var now = floridaNow();
     var weekday = now.day >= 1 && now.day <= 5;
-    var mins = now.hour * 60 + now.minute;
-    if (weekday && mins >= OPEN_HOUR * 60 && mins < CLOSE_HOUR * 60) {
-      return { open: true, text: "Open now until 5pm" };
-    }
-    if (weekday && mins < OPEN_HOUR * 60) return { open: false, text: "Closed now, opens today at 8am" };
-    var next = now.day === 5 || now.day === 6 ? "Monday" : "tomorrow";
-    if (now.day === 0) next = "tomorrow";
-    return { open: false, text: "Closed now, opens " + next + " at 8am" };
-  }
-
-  function applyHours() {
-    var status = hoursStatus();
+    var open = weekday && now.mins >= 480 && now.mins < 1020;
+    var text = open ? "Open now until 5pm"
+      : weekday && now.mins < 480 ? "Opens today at 8am"
+      : "Closed, opens " + (now.day === 5 || now.day === 6 ? "Monday" : "tomorrow") + " at 8am";
     document.querySelectorAll("[data-hours-status]").forEach(function (el) {
-      el.classList.toggle("is-open", status.open);
-      var label = el.querySelector("[data-hours-text]");
-      if (label) label.textContent = status.text;
+      el.classList.toggle("is-open", open);
+      var t = el.querySelector("[data-hours-text]");
+      if (t) t.textContent = text;
     });
-    var today = DAYS[floridaNow().day];
     document.querySelectorAll("[data-day]").forEach(function (row) {
-      row.classList.toggle("is-today", row.getAttribute("data-day") === today);
+      row.classList.toggle("is-today", row.getAttribute("data-day") === DAYS[now.day]);
     });
   }
 
-  /* Header shadow once the page scrolls. */
+  /* Sticky header gets a hairline shadow once you scroll. */
   function stickyHeader() {
     var header = document.querySelector(".site-header");
     if (!header) return;
-    var onScroll = function () { header.classList.toggle("is-scrolled", window.scrollY > 8); };
+    var onScroll = function () { header.classList.toggle("is-scrolled", window.scrollY > 4); };
     onScroll();
     window.addEventListener("scroll", onScroll, { passive: true });
   }
 
-  /* Mobile menu. */
-  function mobileNav() {
-    var toggle = document.querySelector(".nav-toggle");
-    var panel = document.getElementById("mobile-nav");
-    if (!toggle || !panel) return;
-    toggle.addEventListener("click", function () {
-      var open = toggle.getAttribute("aria-expanded") === "true";
-      toggle.setAttribute("aria-expanded", String(!open));
-      toggle.setAttribute("aria-label", open ? "Open menu" : "Close menu");
-      toggle.querySelector("use").setAttribute("href", open ? "#i-menu" : "#i-x");
-      panel.hidden = open;
-    });
+  /* Navigation block overlay menu (mobile). */
+  function overlayMenu() {
+    var openBtn = document.querySelector(".wp-block-navigation__responsive-container-open");
+    var panel = document.querySelector(".wp-block-navigation__responsive-container");
+    if (!openBtn || !panel) return;
+    var closeBtn = panel.querySelector(".wp-block-navigation__responsive-container-close");
+    function open() {
+      panel.classList.add("is-menu-open", "has-modal-open");
+      openBtn.setAttribute("aria-expanded", "true");
+      document.documentElement.classList.add("has-modal-open");
+      closeBtn.focus();
+    }
+    function close() {
+      panel.classList.remove("is-menu-open", "has-modal-open");
+      openBtn.setAttribute("aria-expanded", "false");
+      document.documentElement.classList.remove("has-modal-open");
+      openBtn.focus();
+    }
+    openBtn.addEventListener("click", open);
+    closeBtn.addEventListener("click", close);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape" && panel.classList.contains("is-menu-open")) close(); });
   }
 
-  /* Small helpers for validation. */
-  function setError(field, message) {
-    var wrap = field.closest(".field");
+  /* Image block "Expand on click" lightbox, same zoom animation as WordPress core. */
+  function lightbox() {
+    var figures = document.querySelectorAll(".wp-lightbox-container");
+    if (!figures.length) return;
+    var overlay = document.createElement("div");
+    overlay.className = "wp-lightbox-overlay zoom";
+    overlay.setAttribute("role", "dialog");
+    overlay.setAttribute("aria-modal", "true");
+    overlay.setAttribute("aria-label", "Enlarged image");
+    overlay.tabIndex = -1;
+    overlay.innerHTML = '<button type="button" aria-label="Close" class="wp-lightbox-close-button"><svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" width="20" height="20" aria-hidden="true" focusable="false"><path d="m13.06 12 6.47-6.47-1.06-1.06L12 10.94 5.53 4.47 4.47 5.53 10.94 12l-6.47 6.47 1.06 1.06L12 13.06l6.47 6.47 1.06-1.06L13.06 12Z"></path></svg></button>' +
+      '<div class="lightbox-image-container"><figure class="wp-block-image"><img alt=""></figure></div><div class="scrim" aria-hidden="true"></div>';
+    document.body.appendChild(overlay);
+    var big = overlay.querySelector("img");
+    var lastTrigger = null;
+
+    function openFrom(img, trigger) {
+      lastTrigger = trigger;
+      var rect = img.getBoundingClientRect();
+      var natW = img.naturalWidth || rect.width, natH = img.naturalHeight || rect.height;
+      var ratio = natW / natH;
+      var maxW = Math.min(window.innerWidth - 80, natW > 400 ? 1400 : natW), maxH = window.innerHeight - 120;
+      var w = maxW, h = w / ratio;
+      if (h > maxH) { h = maxH; w = h * ratio; }
+      var s = overlay.style;
+      s.setProperty("--wp--lightbox-container-width", w + "px");
+      s.setProperty("--wp--lightbox-container-height", h + "px");
+      s.setProperty("--wp--lightbox-image-width", w + "px");
+      s.setProperty("--wp--lightbox-image-height", h + "px");
+      s.setProperty("--wp--lightbox-scale", String(rect.width / w));
+      s.setProperty("--wp--lightbox-initial-left-position", rect.left + "px");
+      s.setProperty("--wp--lightbox-initial-top-position", rect.top + "px");
+      s.setProperty("--wp--lightbox-scrollbar-width", (window.innerWidth - document.documentElement.clientWidth) + "px");
+      big.src = img.currentSrc || img.src;
+      big.alt = img.alt;
+      overlay.classList.remove("show-closing-animation");
+      overlay.classList.add("active");
+      document.documentElement.classList.add("has-lightbox-open");
+      overlay.focus();
+    }
+    function close() {
+      if (!overlay.classList.contains("active")) return;
+      overlay.classList.remove("active");
+      overlay.classList.add("show-closing-animation");
+      document.documentElement.classList.remove("has-lightbox-open");
+      if (lastTrigger) lastTrigger.focus({ preventScroll: true });
+    }
+    figures.forEach(function (fig) {
+      var img = fig.querySelector("img");
+      var btn = fig.querySelector(".lightbox-trigger");
+      var go = function () { openFrom(img, btn); };
+      img.addEventListener("click", go);
+      if (btn) btn.addEventListener("click", go);
+    });
+    overlay.addEventListener("click", close);
+    document.addEventListener("keydown", function (e) { if (e.key === "Escape") close(); });
+    window.addEventListener("scroll", close, { passive: true });
+  }
+
+  /* Gentle entrance animation as blocks scroll into view. */
+  function reveal() {
+    var items = document.querySelectorAll(".wp-reveal");
+    if (!items.length) return;
+    if (reduceMotion || !("IntersectionObserver" in window)) {
+      items.forEach(function (el) { el.classList.add("is-revealed"); });
+      return;
+    }
+    var io = new IntersectionObserver(function (entries) {
+      entries.forEach(function (e) {
+        if (e.isIntersecting) { e.target.classList.add("is-revealed"); io.unobserve(e.target); }
+      });
+    }, { rootMargin: "0px 0px -8% 0px", threshold: 0.08 });
+    items.forEach(function (el) { io.observe(el); });
+  }
+
+  /* Forms, following Gravity Forms behavior and wording. */
+  var MSG = {
+    required: "This field is required.",
+    email: "The email address entered is invalid, please check the formatting (e.g. email@domain.com).",
+    phone: "Phone format: (###) ###-####",
+    zip: "Please enter a valid 5-digit ZIP code."
+  };
+  function setError(el, message) {
+    var wrap = el.closest(".gfield");
     if (!wrap) return;
     wrap.classList.toggle("has-error", Boolean(message));
-    field.setAttribute("aria-invalid", message ? "true" : "false");
-    var out = wrap.querySelector(".field-error");
+    var out = wrap.querySelector(".validation_message");
     if (out) out.textContent = message || "";
+    if (el.matches("input, select, textarea")) el.setAttribute("aria-invalid", message ? "true" : "false");
   }
-
-  function validateField(field) {
-    var value = field.value.trim();
-    var name = field.name;
-    if (field.required && !value) {
-      setError(field, field.getAttribute("data-required-msg") || "Please fill this in.");
-      return false;
-    }
-    if (value && name === "zip" && !/^\d{5}$/.test(value)) {
-      setError(field, "Enter a 5-digit ZIP code.");
-      return false;
-    }
-    if (value && field.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-      setError(field, "That email doesn't look right.");
-      return false;
-    }
-    if (value && field.type === "tel" && value.replace(/\D/g, "").length < 10) {
-      setError(field, "Enter a 10-digit phone number.");
-      return false;
-    }
-    setError(field, "");
+  function validateInput(el) {
+    var v = el.value.trim();
+    if (el.required && !v) { setError(el, MSG.required); return false; }
+    if (v && el.name === "zip" && !/^\d{5}$/.test(v)) { setError(el, MSG.zip); return false; }
+    if (v && el.type === "email" && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v)) { setError(el, MSG.email); return false; }
+    if (v && el.type === "tel" && v.replace(/\D/g, "").length !== 10) { setError(el, MSG.phone); return false; }
+    setError(el, "");
     return true;
   }
-
+  function validateGroup(wrap) {
+    var ok = Boolean(wrap.querySelector("input:checked"));
+    wrap.classList.toggle("has-error", !ok);
+    var out = wrap.querySelector(".validation_message");
+    if (out) out.textContent = ok ? "" : MSG.required;
+    return ok;
+  }
+  function validateScope(scope) {
+    var ok = true;
+    scope.querySelectorAll(".gfield input:not([type=checkbox]):not([type=radio]), .gfield select, .gfield textarea").forEach(function (el) {
+      if (!validateInput(el)) ok = false;
+    });
+    scope.querySelectorAll("[data-group-required]").forEach(function (g) { if (!validateGroup(g)) ok = false; });
+    return ok;
+  }
   function formatPhone(input) {
     input.addEventListener("input", function () {
       var d = input.value.replace(/\D/g, "").slice(0, 10);
-      var out = d;
-      if (d.length > 6) out = "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6);
-      else if (d.length > 3) out = "(" + d.slice(0, 3) + ") " + d.slice(3);
-      else if (d.length > 0) out = "(" + d;
-      input.value = out;
+      input.value = d.length > 6 ? "(" + d.slice(0, 3) + ") " + d.slice(3, 6) + "-" + d.slice(6)
+        : d.length > 3 ? "(" + d.slice(0, 3) + ") " + d.slice(3)
+        : d.length ? "(" + d : "";
     });
   }
 
-  /* Hero "quote starter": collects services + ZIP and hands off to the full quote form. */
-  function quoteStarter() {
-    document.querySelectorAll("[data-quote-starter]").forEach(function (form) {
+  function gforms() {
+    document.querySelectorAll(".gform_wrapper form").forEach(function (form) {
+      var wrapper = form.closest(".gform_wrapper");
+      var banner = wrapper.querySelector(".gform_validation_errors");
+      var pages = Array.prototype.slice.call(form.querySelectorAll(".gform_page"));
+      var current = 0;
+
+      function fail(scope) {
+        if (banner) banner.hidden = false;
+        var bad = scope.querySelector(".has-error input, .has-error select, .has-error textarea");
+        (banner || form).scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
+        if (bad) setTimeout(function () { bad.focus({ preventScroll: true }); }, 300);
+      }
+      function showPage(i) {
+        current = i;
+        pages.forEach(function (p, idx) { p.hidden = idx !== i; });
+        var pct = Math.round((i + 1) / pages.length * 100);
+        var bar = wrapper.querySelector(".gf_progressbar_percentage");
+        if (bar) { bar.style.width = pct + "%"; bar.querySelector("span").textContent = pct + "%"; }
+        var title = wrapper.querySelector(".gf_progressbar_title");
+        if (title) title.textContent = "Step " + (i + 1) + " of " + pages.length + " - " + pages[i].getAttribute("data-title");
+      }
+
+      if (pages.length) {
+        var params = new URLSearchParams(window.location.search);
+        (params.get("service") || "").split(",").forEach(function (v) {
+          var box = form.querySelector('[name="service"][value="' + v + '"]');
+          if (box) box.checked = true;
+        });
+        if (params.get("zip")) form.querySelector('[name="zip"]').value = params.get("zip").replace(/\D/g, "").slice(0, 5);
+        if (params.get("veteran") === "1") { var y = form.querySelector('[name="veteran"][value="Yes"]'); if (y) y.checked = true; }
+        form.addEventListener("click", function (e) {
+          var next = e.target.closest(".gform_next_button");
+          var prev = e.target.closest(".gform_previous_button");
+          if (next) {
+            if (validateScope(pages[current])) { if (banner) banner.hidden = true; showPage(current + 1); wrapper.scrollIntoView({ block: "start" }); }
+            else fail(pages[current]);
+          }
+          if (prev) { if (banner) banner.hidden = true; showPage(current - 1); }
+        });
+        showPage(0);
+      }
+
+      form.addEventListener("change", function (e) {
+        var g = e.target.closest("[data-group-required]");
+        if (g && g.classList.contains("has-error")) validateGroup(g);
+      });
+      form.querySelectorAll("input, select, textarea").forEach(function (el) {
+        el.addEventListener("blur", function () { if (el.closest(".has-error") || el.value.trim()) validateInput(el); });
+      });
+
       form.addEventListener("submit", function (e) {
         e.preventDefault();
-        var zip = form.querySelector("[name=zip]");
-        if (!validateField(zip)) { zip.focus(); return; }
-        var services = Array.prototype.map.call(form.querySelectorAll("[name=service]:checked"), function (c) { return c.value; });
-        var params = new URLSearchParams();
-        if (services.length) params.set("service", services.join(","));
-        if (zip.value.trim()) params.set("zip", zip.value.trim());
-        window.location.href = form.getAttribute("data-action") + (params.toString() ? "?" + params.toString() : "");
+        var scope = pages.length ? pages[current] : form;
+        if (!validateScope(scope)) { fail(scope); return; }
+        // Prototype: nothing is sent. To go live, post new FormData(form) to the form service here.
+        var first = (form.querySelector('[name="name"]') || {}).value || "";
+        var done = wrapper.querySelector(".gform_confirmation_wrapper");
+        var nameSlot = done.querySelector("[data-first-name]");
+        if (nameSlot) nameSlot.textContent = first.trim().split(" ")[0] ? ", " + first.trim().split(" ")[0] : "";
+        form.hidden = true;
+        if (banner) banner.hidden = true;
+        var bar = wrapper.querySelector(".gf_progressbar_wrapper");
+        if (bar) bar.hidden = true;
+        done.hidden = false;
+        done.scrollIntoView({ block: "center", behavior: reduceMotion ? "auto" : "smooth" });
       });
     });
   }
 
-  /* Three-step quote funnel. Front end only: submitting shows the confirmation screen. */
-  function quoteFunnel() {
-    var form = document.querySelector("[data-quote-funnel]");
-    if (!form) return;
-    var panels = Array.prototype.slice.call(form.querySelectorAll("[data-step]"));
-    var bar = document.querySelector("[data-progress-bar]");
-    var label = document.querySelector("[data-progress-label]");
-    var back = form.querySelector("[data-back]");
-    var next = form.querySelector("[data-next]");
-    var submit = form.querySelector("[data-submit]");
-    var current = 0;
-
-    // Prefill from links like ?service=pest-control&zip=33065&veteran=1
-    var params = new URLSearchParams(window.location.search);
-    (params.get("service") || "").split(",").forEach(function (v) {
-      var box = form.querySelector('[name=service][value="' + v + '"]');
-      if (box) box.checked = true;
-    });
-    if (params.get("zip")) form.querySelector("[name=zip]").value = params.get("zip").replace(/\D/g, "").slice(0, 5);
-    if (params.get("veteran") === "1") form.querySelector("[name=veteran]").checked = true;
-    if (params.get("issue")) form.querySelector("[name=details]").value = params.get("issue");
-
-    function show(i) {
-      current = i;
-      panels.forEach(function (p, idx) { p.hidden = idx !== i; });
-      back.hidden = i === 0;
-      next.hidden = i === panels.length - 1;
-      submit.hidden = i !== panels.length - 1;
-      bar.style.width = ((i + 1) / panels.length * 100) + "%";
-      label.textContent = "Step " + (i + 1) + " of " + panels.length;
-      updateSummary();
+  /* Mobile action bar appears once the main call-to-action has scrolled out of view. */
+  function mobileActions() {
+    var bar = document.querySelector(".mobile-actions");
+    if (!bar) return;
+    var anchor = document.querySelector("[data-hero-cta]");
+    if (anchor && "IntersectionObserver" in window) {
+      new IntersectionObserver(function (entries) {
+        bar.classList.toggle("is-visible", !entries[0].isIntersecting && entries[0].boundingClientRect.top < 0);
+      }).observe(anchor);
+    } else {
+      var onScroll = function () { bar.classList.toggle("is-visible", window.scrollY > 240); };
+      onScroll();
+      window.addEventListener("scroll", onScroll, { passive: true });
     }
-
-    function stepValid(i) {
-      var panel = panels[i];
-      var ok = true;
-      var err = panel.querySelector(".step-error");
-      if (i === 0) {
-        ok = panel.querySelectorAll("[name=service]:checked").length > 0;
-        if (err) err.classList.toggle("show", !ok);
-        return ok;
-      }
-      if (i === 1) {
-        var typeChosen = panel.querySelector("[name=property]:checked");
-        if (err) err.classList.toggle("show", !typeChosen);
-        ok = Boolean(typeChosen);
-      }
-      panel.querySelectorAll(".input").forEach(function (f) { if (!validateField(f)) ok = false; });
-      return ok;
-    }
-
-    function updateSummary() {
-      var list = document.querySelector("[data-summary]");
-      if (!list) return;
-      var services = Array.prototype.map.call(form.querySelectorAll("[name=service]:checked"), function (c) { return SERVICE_LABELS[c.value]; });
-      var property = form.querySelector("[name=property]:checked");
-      var zip = form.querySelector("[name=zip]").value.trim();
-      var vet = form.querySelector("[name=veteran]").checked;
-      var rows = [
-        ["Service", services.length ? services.join(", ") : "Not picked yet"],
-        ["Property", property ? property.value : "Not picked yet"],
-        ["ZIP code", zip || "Not added yet"],
-        ["Veteran discount", vet ? "Yes, 10% off" : "No"]
-      ];
-      list.innerHTML = rows.map(function (r) { return "<li><span>" + r[0] + "</span><strong>" + r[1] + "</strong></li>"; }).join("");
-    }
-
-    form.addEventListener("change", updateSummary);
-    form.addEventListener("input", function (e) { if (e.target.name === "zip") updateSummary(); });
-    next.addEventListener("click", function () {
-      if (stepValid(current)) { show(current + 1); form.scrollIntoView({ block: "start" }); }
-    });
-    back.addEventListener("click", function () { show(current - 1); });
-    form.querySelectorAll(".input").forEach(function (f) {
-      f.addEventListener("blur", function () { if (f.value.trim()) validateField(f); });
-    });
-
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      if (!stepValid(current)) return;
-      // To go live, send new FormData(form) to your form service here, then show the confirmation.
-      var name = form.querySelector("[name=name]").value.trim().split(" ")[0];
-      var done = document.querySelector("[data-quote-done]");
-      done.querySelector("[data-first-name]").textContent = name ? ", " + name : "";
-      form.closest(".form-card").hidden = true;
-      done.hidden = false;
-      done.scrollIntoView({ block: "start" });
-    });
-
-    show(0);
-  }
-
-  /* Contact form. Front end only. */
-  function contactForm() {
-    var form = document.querySelector("[data-contact-form]");
-    if (!form) return;
-    form.querySelectorAll(".input").forEach(function (f) {
-      f.addEventListener("blur", function () { if (f.value.trim()) validateField(f); });
-    });
-    form.addEventListener("submit", function (e) {
-      e.preventDefault();
-      var ok = true;
-      form.querySelectorAll(".input").forEach(function (f) { if (!validateField(f)) ok = false; });
-      if (!ok) { var bad = form.querySelector("[aria-invalid=true]"); if (bad) bad.focus(); return; }
-      // To go live, send new FormData(form) to your form service here.
-      form.hidden = true;
-      document.querySelector("[data-contact-done]").hidden = false;
-    });
   }
 
   document.addEventListener("DOMContentLoaded", function () {
     applyHours();
     setInterval(applyHours, 60000);
     stickyHeader();
-    mobileNav();
-    document.querySelectorAll("input[type=tel]").forEach(formatPhone);
-    quoteStarter();
-    quoteFunnel();
-    contactForm();
+    overlayMenu();
+    mobileActions();
+    lightbox();
+    reveal();
+    document.querySelectorAll('input[type="tel"]').forEach(formatPhone);
+    gforms();
     document.querySelectorAll("[data-year]").forEach(function (el) { el.textContent = new Date().getFullYear(); });
   });
 })();
